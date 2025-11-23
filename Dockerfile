@@ -11,7 +11,7 @@ RUN composer install \
     --no-interaction \
     --prefer-dist \
     --no-progress \
-    --no-scripts   # muhimu: usikimbize artisan scripts wakati wa build
+    --no-scripts   # important: avoid artisan commands during build
 
 COPY . .
 
@@ -22,16 +22,16 @@ FROM node:20-alpine AS frontend_stage
 
 WORKDIR /app
 
-# Copy Node package files (package.json, package-lock.json, etc.)
+# Copy package files
 COPY package*.json ./
 
-# Install node dependencies only if package.json exists
+# Install dependencies only if package.json exists
 RUN if [ -f package.json ]; then npm install; fi
 
-# Copy the rest of the app
+# Copy complete app
 COPY . .
 
-# Build frontend (Vite) only if package.json exists
+# Build frontend (if package.json exists)
 RUN if [ -f package.json ]; then npm run build; fi
 
 
@@ -40,6 +40,7 @@ RUN if [ -f package.json ]; then npm run build; fi
 # ============================
 FROM php:8.2-apache
 
+# Install system packages and extensions
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -49,24 +50,31 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-install pdo pdo_mysql zip intl \
     && rm -rf /var/lib/apt/lists/*
 
+# Enable Apache rewrite
 RUN a2enmod rewrite
 
-# Set Laravel public folder as Apache root
+# Set Apache public directory
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' \
-    /etc/apache2/sites-available/000-default.conf /etc/apache2/apache2.conf
+    /etc/apache2/sites-available/000-default.conf \
+    /etc/apache2/apache2.conf
 
 WORKDIR /var/www/html
 
-# Copy app with vendor from composer stage
+# Copy app + vendor from composer stage
 COPY --from=composer_stage /app ./
 
-# Copy Vite build output only
+# Copy Vite build output
 COPY --from=frontend_stage /app/public/build ./public/build
 
-# Fix permissions
+# Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
+
+# ===============================
+# RUN MIGRATIONS (TEMPORARY)
+# ===============================
+RUN php artisan migrate --force || true
 
 EXPOSE 80
 
