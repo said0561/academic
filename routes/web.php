@@ -26,25 +26,31 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 
-
 Route::get('/create-admin', function () {
-    // 1. Pata ID ya role ya admin
-    $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
+    // 1. Hakikisha kuna role ya admin, kama haipo tui-create
+    $adminRole = DB::table('roles')->where('slug', 'admin')->first();
 
-    if (!$adminRoleId) {
-        abort(500, 'Admin role not found. Hakikisha roles table ina admin row.');
+    if (!$adminRole) {
+        $roleId = DB::table('roles')->insertGetId([
+            'name'       => 'Admin',
+            'slug'       => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    } else {
+        $roleId = $adminRole->id;
     }
 
     // 2. Tengeneza au pata user kwa kutumia PHONE
-    $phone = '255743434305'; // weka namba yoyote halali ya mfumo wako inayostart na 255
+    $phone = '255743434305'; // weka namba halali ya mfumo wako inayostart na 255
 
     $user = User::firstOrCreate(
         ['phone' => $phone],
         [
             'name'     => 'System Admin',
-            'email'    => 'admin@example.com', // lazima iwepo kwa validation/unique
+            'email'    => 'admin@example.com', // lazima iwepo
             'phone'    => $phone,
-            'password' => Hash::make('Admin12345'), // password ya ku-login
+            'password' => Hash::make('Admin12345'),
         ]
     );
 
@@ -52,7 +58,7 @@ Route::get('/create-admin', function () {
     DB::table('role_user')->updateOrInsert(
         [
             'user_id' => $user->id,
-            'role_id' => $adminRoleId,
+            'role_id' => $roleId,
         ],
         [
             'created_at' => now(),
@@ -65,10 +71,9 @@ Route::get('/create-admin', function () {
         'user_id'  => $user->id,
         'phone'    => $user->phone,
         'email'    => $user->email,
-        'role_id'  => $adminRoleId,
+        'role_id'  => $roleId,
     ]);
 });
-
 
 
 
