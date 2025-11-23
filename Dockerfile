@@ -10,7 +10,8 @@ RUN composer install \
     --no-dev \
     --no-interaction \
     --prefer-dist \
-    --no-progress
+    --no-progress \
+    --no-scripts   # muhimu: usikimbize artisan scripts wakati wa build
 
 COPY . .
 
