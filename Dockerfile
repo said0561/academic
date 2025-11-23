@@ -70,7 +70,7 @@ COPY --from=frontend_stage /app/public/build ./public/build
 
 # Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R ug+rwx storage/bootstrap/cache storage
+    && chmod -R ug+rwx storage bootstrap/cache
 
 # ===============================
 # RUN MIGRATIONS (TEMPORARY)
