@@ -22,6 +22,54 @@ use App\Http\Controllers\Teacher\TeacherDashboardController;
 use App\Http\Controllers\Parent\ParentDashboardController;
 use App\Http\Controllers\Academic\AcademicDashboardController;
 
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+
+
+Route::get('/create-admin', function () {
+    // 1. Pata ID ya role ya admin
+    $adminRoleId = DB::table('roles')->where('slug', 'admin')->value('id');
+
+    if (!$adminRoleId) {
+        abort(500, 'Admin role not found. Hakikisha roles table ina admin row.');
+    }
+
+    // 2. Tengeneza au pata user kwa kutumia PHONE
+    $phone = '255743434305'; // weka namba yoyote halali ya mfumo wako inayostart na 255
+
+    $user = User::firstOrCreate(
+        ['phone' => $phone],
+        [
+            'name'     => 'System Admin',
+            'email'    => 'admin@example.com', // lazima iwepo kwa validation/unique
+            'phone'    => $phone,
+            'password' => Hash::make('Admin12345'), // password ya ku-login
+        ]
+    );
+
+    // 3. Mpe role ya admin kwenye role_user
+    DB::table('role_user')->updateOrInsert(
+        [
+            'user_id' => $user->id,
+            'role_id' => $adminRoleId,
+        ],
+        [
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]
+    );
+
+    return response()->json([
+        'message'  => 'Admin user created/updated with admin role.',
+        'user_id'  => $user->id,
+        'phone'    => $user->phone,
+        'email'    => $user->email,
+        'role_id'  => $adminRoleId,
+    ]);
+});
+
+
 
 
 /*
