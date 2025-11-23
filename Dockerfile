@@ -72,9 +72,7 @@ COPY --from=frontend_stage /app/public/build ./public/build
 RUN chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
 
-# ===============================
-# RUN MIGRATIONS (TEMPORARY)
-# ===============================
+# Run migrations (temporary)
 RUN php artisan migrate --force || true
 
 EXPOSE 80
