@@ -40,14 +40,15 @@ RUN if [ -f package.json ]; then npm run build; fi
 # ============================
 FROM php:8.2-apache
 
-# Install system packages and extensions
+# Install system packages and PHP extensions
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     libzip-dev \
     libpng-dev \
     libicu-dev \
-    && docker-php-ext-install pdo pdo_mysql zip intl \
+    libpq-dev \
+    && docker-php-ext-install pdo_mysql pdo_pgsql zip intl \
     && rm -rf /var/lib/apt/lists/*
 
 # Enable Apache rewrite
@@ -69,7 +70,7 @@ COPY --from=frontend_stage /app/public/build ./public/build
 
 # Permissions
 RUN chown -R www-data:www-data storage bootstrap/cache \
-    && chmod -R ug+rwx storage bootstrap/cache
+    && chmod -R ug+rwx storage/bootstrap/cache storage
 
 # ===============================
 # RUN MIGRATIONS (TEMPORARY)
