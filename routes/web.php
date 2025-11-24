@@ -30,8 +30,24 @@ use Illuminate\Database\Schema\Blueprint;
 
 Route::get('/create-admin', function () {
     try {
-        // 0. Tengeneza tables kama hazipo (kulingana na academic.sql yako)
+        // 0. Tengeneza tables kulingana na schema yako ya MySQL (academic.sql)
 
+        // USERS
+        if (!Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->string('name');
+                $table->string('email')->unique();
+                $table->string('phone')->nullable();
+                $table->timestamp('email_verified_at')->nullable();
+                $table->string('password');
+                $table->rememberToken();
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
+
+        // ROLES
         if (!Schema::hasTable('roles')) {
             Schema::create('roles', function (Blueprint $table) {
                 $table->bigIncrements('id');
@@ -42,6 +58,7 @@ Route::get('/create-admin', function () {
             });
         }
 
+        // ROLE_USER
         if (!Schema::hasTable('role_user')) {
             Schema::create('role_user', function (Blueprint $table) {
                 $table->bigIncrements('id');
@@ -53,7 +70,6 @@ Route::get('/create-admin', function () {
         }
 
         // 1. Hakikisha kuna role ya admin
-
         $adminRole = DB::table('roles')->where('slug', 'admin')->first();
 
         if (!$adminRole) {
@@ -67,9 +83,8 @@ Route::get('/create-admin', function () {
             $roleId = $adminRole->id;
         }
 
-        // 2. Unda / update admin user kwa kutumia PHONE + EMAIL
-
-        $phone = '255743434305'; // format uliyonisema
+        // 2. Unda / pata admin user kwa kutumia PHONE
+        $phone = '255743434305'; // admin phone, format uliyonisema
 
         $user = User::firstOrCreate(
             ['phone' => $phone],
@@ -82,7 +97,6 @@ Route::get('/create-admin', function () {
         );
 
         // 3. Mpe role ya admin kwenye role_user
-
         DB::table('role_user')->updateOrInsert(
             [
                 'user_id' => $user->id,
