@@ -24,17 +24,41 @@ use App\Http\Controllers\Academic\AcademicDashboardController;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
-
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 Route::get('/create-admin', function () {
     try {
-        // 1. Hakikisha kuna role ya admin, kama haipo tui-create
+        // 0. Tengeneza tables kama hazipo (kulingana na academic.sql yako)
+
+        if (!Schema::hasTable('roles')) {
+            Schema::create('roles', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->string('name');
+                $table->string('slug');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
+
+        if (!Schema::hasTable('role_user')) {
+            Schema::create('role_user', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('role_id');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
+
+        // 1. Hakikisha kuna role ya admin
+
         $adminRole = DB::table('roles')->where('slug', 'admin')->first();
 
         if (!$adminRole) {
             $roleId = DB::table('roles')->insertGetId([
-                'name'       => 'Admin',
+                'name'       => 'Administrator',
                 'slug'       => 'admin',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -43,8 +67,9 @@ Route::get('/create-admin', function () {
             $roleId = $adminRole->id;
         }
 
-        // 2. Tengeneza/pata user kwa kutumia PHONE
-        $phone = '255743434305'; // weka namba unayotaka, lazima ianze na 255
+        // 2. Unda / update admin user kwa kutumia PHONE + EMAIL
+
+        $phone = '255743434305'; // format uliyonisema
 
         $user = User::firstOrCreate(
             ['phone' => $phone],
@@ -57,6 +82,7 @@ Route::get('/create-admin', function () {
         );
 
         // 3. Mpe role ya admin kwenye role_user
+
         DB::table('role_user')->updateOrInsert(
             [
                 'user_id' => $user->id,
@@ -78,12 +104,12 @@ Route::get('/create-admin', function () {
         ]);
     } catch (\Throwable $e) {
         return response()->json([
-            'ok'      => false,
-            'error'   => $e->getMessage(),
-            'trace'   => $e->getTraceAsString(),
+            'ok'    => false,
+            'error' => $e->getMessage(),
         ], 500);
     }
 });
+
 
 
 
