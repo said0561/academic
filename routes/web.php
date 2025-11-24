@@ -23,14 +23,13 @@ use App\Http\Controllers\Parent\ParentDashboardController;
 use App\Http\Controllers\Academic\AcademicDashboardController;
 
 
-
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 
-// ... routes zako nyingine hapa juu au chini
+// ... routes zako nyingine
 
 Route::get('/create-admin', function () {
     try {
@@ -84,8 +83,7 @@ Route::get('/create-admin', function () {
                 $table->string('first_name');
                 $table->string('middle_name')->nullable();
                 $table->string('last_name');
-                // MySQL enum('M','F') -> string(1)
-                $table->string('gender', 1)->nullable();
+                $table->string('gender', 1)->nullable(); // 'M' / 'F'
                 $table->date('dob')->nullable();
                 $table->unsignedBigInteger('class_id');
                 $table->timestamp('created_at')->nullable();
@@ -115,7 +113,7 @@ Route::get('/create-admin', function () {
             });
         }
 
-        // Seed default departments: SECULAR & DINI kama table bado haina rekodi
+        // Seed default departments: SECULAR & DINI kama bado tupu
         if (Schema::hasTable('departments') && DB::table('departments')->count() === 0) {
             DB::table('departments')->insert([
                 [
@@ -164,7 +162,7 @@ Route::get('/create-admin', function () {
                 $table->bigIncrements('id');
                 $table->string('name');
                 $table->string('term')->nullable();
-                $table->string('year', 4); // year(4) -> string(4)
+                $table->string('year', 4);
                 $table->unsignedInteger('total_marks')->default(100);
                 $table->timestamp('created_at')->nullable();
                 $table->timestamp('updated_at')->nullable();
@@ -214,22 +212,43 @@ Route::get('/create-admin', function () {
 
         /*
          |---------------------------------------------------------
-         | 1. ENSURE ADMIN ROLE + USER
+         | 1. ENSURE ALL ROLES (admin, teacher, parent, academic)
          |---------------------------------------------------------
         */
 
-        $adminRole = DB::table('roles')->where('slug', 'admin')->first();
+        $defaultRoles = [
+            ['name' => 'Administrator', 'slug' => 'admin'],
+            ['name' => 'Teacher',       'slug' => 'teacher'],
+            ['name' => 'Parent',        'slug' => 'parent'],
+            ['name' => 'Academic',      'slug' => 'academic'],
+        ];
 
-        if (!$adminRole) {
-            $roleId = DB::table('roles')->insertGetId([
-                'name'       => 'Administrator',
-                'slug'       => 'admin',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        } else {
-            $roleId = $adminRole->id;
+        $adminRoleId = null;
+
+        foreach ($defaultRoles as $role) {
+            $existing = DB::table('roles')->where('slug', $role['slug'])->first();
+
+            if (!$existing) {
+                $id = DB::table('roles')->insertGetId([
+                    'name'       => $role['name'],
+                    'slug'       => $role['slug'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            } else {
+                $id = $existing->id;
+            }
+
+            if ($role['slug'] === 'admin') {
+                $adminRoleId = $id;
+            }
         }
+
+        /*
+         |---------------------------------------------------------
+         | 2. ENSURE ADMIN USER + ASSIGN ADMIN ROLE
+         |---------------------------------------------------------
+        */
 
         $phone = '255743434305';
 
@@ -243,24 +262,26 @@ Route::get('/create-admin', function () {
             ]
         );
 
-        DB::table('role_user')->updateOrInsert(
-            [
-                'user_id' => $user->id,
-                'role_id' => $roleId,
-            ],
-            [
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]
-        );
+        if ($adminRoleId !== null) {
+            DB::table('role_user')->updateOrInsert(
+                [
+                    'user_id' => $user->id,
+                    'role_id' => $adminRoleId,
+                ],
+                [
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
 
         return response()->json([
             'ok'       => true,
-            'message'  => 'All core tables ensured, departments seeded, admin ready.',
+            'message'  => 'Core tables OK, roles seeded (admin, teacher, parent, academic), admin user ready.',
             'user_id'  => $user->id,
             'phone'    => $user->phone,
             'email'    => $user->email,
-            'role_id'  => $roleId,
+            'admin_role_id' => $adminRoleId,
         ]);
     } catch (\Throwable $e) {
         return response()->json([
